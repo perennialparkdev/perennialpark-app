@@ -87,8 +87,8 @@ export function exportDirectoryToPdf(
 ): Promise<void> {
   return import("jspdf").then(({ jsPDF }) => {
     const doc = new jsPDF({ orientation: "l" });
-    const pageWidth = doc.getPageWidth();
-    const pageHeight = doc.getPageHeight();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     let y = 15;
 
     doc.setFontSize(14);

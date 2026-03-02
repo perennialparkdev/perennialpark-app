@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { formatShabbosDate } from "@/lib/utils-date";
 
 interface ShabbosCardProps {
   shabbosDate: string;
@@ -39,7 +38,6 @@ export default function ShabbosCard({ shabbosDate, className }: ShabbosCardProps
   const [data, setData] = useState<ShabbosPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const weekendLabel = formatShabbosDate(shabbosDate);
 
   useEffect(() => {
     if (!shabbosDate) {
