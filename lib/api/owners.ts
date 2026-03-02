@@ -164,6 +164,29 @@ export async function completeProfile(
   return data;
 }
 
+export type PasswordRequestResponse = {
+  success: boolean;
+  message: string;
+};
+
+export async function requestPasswordReset(
+  email: string
+): Promise<PasswordRequestResponse> {
+  const res = await fetch(`${getBaseUrl()}/api/owners/password-request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    return {
+      success: false,
+      message: data.message ?? "Password reset request failed",
+    };
+  }
+  return data;
+}
+
 export const AUTH_TOKEN_KEY = "pp_auth_token";
 export const UNIT_ID_KEY = "pp_unit_id";
 export const ROLE_KEY = "pp_role";

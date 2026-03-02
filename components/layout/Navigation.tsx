@@ -16,6 +16,8 @@ import {
   hasAdminAccess,
   canAccessManageUnits,
   canAccessDaveningTimes,
+  type LoginOwnerRole,
+  type StoredUserInfo,
 } from "@/lib/api/owners";
 
 const mainNavLinks = [
@@ -37,9 +39,10 @@ const daveningTimesLink = { href: "/admin/davening-times", label: "Davening Time
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const role = getStoredRole();
-  const userInfo = getStoredUserInfo();
-  console.log("userInfo", userInfo);
+  const [hasToken] = useState(() => !!getStoredToken());
+  const [role] = useState<LoginOwnerRole | null>(() => getStoredRole());
+  const [userInfo] = useState<StoredUserInfo | null>(() => getStoredUserInfo());
+
   const showManage = canAccessManageUnits(role);
   const showDaveningTimes = canAccessDaveningTimes(role);
   const showAdminLabel = hasAdminAccess(role);
@@ -93,7 +96,7 @@ export function Navigation() {
         </div>
 
         <div className="flex-shrink-0 border-b border-emerald-600 bg-emerald-600/30 px-6 py-4">
-          {getStoredToken() && (
+          {hasToken && (
             <>
               {userInfo?.unitNumber != null && userInfo.unitNumber !== "" && (
                 <p className="mb-1 text-xs text-emerald-200">

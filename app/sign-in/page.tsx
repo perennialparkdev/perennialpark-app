@@ -27,9 +27,10 @@ import {
   getOwnerDisplayName,
   getStoredToken,
   type CompleteProfilePayload,
+  requestPasswordReset,
 } from "@/lib/api/owners";
 
-type Step = "login" | "firstLogin" | "completeProfile";
+type Step = "login" | "firstLogin" | "completeProfile" | "forgotPassword";
 
 function isUnitNumber(value: string): boolean {
   return !value.includes("@");
@@ -42,6 +43,9 @@ export default function SignInPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
 
   const [unitNumber, setUnitNumber] = useState<string | null>(null);
 
@@ -73,6 +77,31 @@ export default function SignInPage() {
   const [profileChildren, setProfileChildren] = useState<
     Array<{ name: string; age: number; gender: string }>
   >([]);
+
+  const handlePasswordRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setResetMessage("");
+
+    if (!resetEmail.trim()) {
+      setError("Email is required");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await requestPasswordReset(resetEmail.trim());
+      if (result.success) {
+        router.push("/home");
+      } else {
+        setError(result.message ?? "Failed to send reset email");
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -317,6 +346,18 @@ export default function SignInPage() {
                   Register
                 </Link>
               </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setError("");
+                  setResetMessage("");
+                  setResetEmail(username.includes("@") ? username : "");
+                  setStep("forgotPassword");
+                }}
+                className="mx-auto block cursor-pointer text-sm text-emerald-600 hover:text-emerald-700"
+              >
+                Forgot your password?
+              </button>
             </form>
           </CardContent>
         </Card>
@@ -378,6 +419,69 @@ export default function SignInPage() {
                 ) : (
                   "Complete Setup"
                 )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (step === "forgotPassword") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-emerald-50 to-sky-100 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Reset password</CardTitle>
+            <CardDescription>
+              Enter your email to receive a password reset link
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePasswordRequest} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset_email">Email Address</Label>
+                <Input
+                  id="reset_email"
+                  type="email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  required
+                />
+              </div>
+              {error && (
+                <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
+              {resetMessage && (
+                <div className="rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                  {resetMessage}
+                </div>
+              )}
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-emerald-600 hover:bg-emerald-700"
+              >
+                {loading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  "Send reset link"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setError("");
+                  setResetMessage("");
+                  setStep("login");
+                }}
+              >
+                Back to sign in
               </Button>
             </form>
           </CardContent>
