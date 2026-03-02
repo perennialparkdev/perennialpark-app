@@ -95,13 +95,14 @@ export default function ZmanimCard({ className }: { className?: string }) {
         {zmanimList.map(({ label, labelEn, key }) => (
           <div
             key={key}
-            className="flex items-center justify-between rounded-lg border border-slate-200 bg-white/60 px-3 py-2"
+            className="flex items-center justify-between px-3 py-1"
           >
             <div>
-              <p className="font-hebrew text-sm text-slate-700">{label}</p>
-              <p className="text-[11px] uppercase tracking-wide text-slate-400">
-                {labelEn}
+              <p className="font-hebrew text-sm text-slate-700">
+                {label} 
+                <span className="text-xs text-slate-400 pl-4">{labelEn}</span>
               </p>
+
             </div>
             <span className="text-sm font-semibold text-slate-900">
               {formatTime(zmanim[key])}

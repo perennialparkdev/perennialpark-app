@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import { Open_Sans } from "next/font/google";
+import { Geist, Geist_Mono, Noto_Serif_Hebrew, Open_Sans } from "next/font/google";
 import { QueryProvider } from "@/components/providers/QueryProvider";
 import "./globals.css";
 
@@ -12,6 +11,12 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const notoHebrew = Noto_Serif_Hebrew({
+  variable: "--font-noto-hebrew",
+  subsets: ["hebrew"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 const openSans = Open_Sans({
@@ -32,14 +37,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" dir="ltr">
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Noto+Serif+Hebrew:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${openSans.variable} font-sans antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${openSans.variable} ${notoHebrew.variable} font-sans antialiased`}
       >
         <QueryProvider>{children}</QueryProvider>
       </body>

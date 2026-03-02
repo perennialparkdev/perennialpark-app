@@ -46,6 +46,7 @@ export interface HusbandOwner {
   password: string | null;
   /** -1 pending, 0 anulado, 1 activo */
   status: number;
+  idRol?: string;
 }
 
 export interface WifeOwner {
@@ -56,6 +57,7 @@ export interface WifeOwner {
   password: string | null;
   /** -1 pending, 0 anulado, 1 activo */
   status: number;
+  idRol?: string;
 }
 
 /** Preliminar owner in list (when unit has no owners). */

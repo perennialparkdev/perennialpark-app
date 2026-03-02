@@ -128,16 +128,16 @@ export default function AdminUnitCard({
         </div>
 
         <div className="flex flex-wrap gap-1 border-t border-slate-200 pt-3">
-          {isAnulado && (
+          {/*{isAnulado && (
             <Button variant="outline" size="sm" onClick={() => onActivate(unit)} disabled={busy}>
               <CheckCircle className="mr-1 h-3 w-3" /> Activate
             </Button>
           )}
           {isActive && (
             <Button variant="outline" size="sm" onClick={() => onAnular(unit)} disabled={busy}>
-              <XCircle className="mr-1 h-3 w-3" /> Anular
+              <XCircle className="mr-1 h-3 w-3" /> Cancel Action
             </Button>
-          )}
+          )}*/}
           <Button variant="outline" size="sm" onClick={() => onUnlink(unit)} disabled={busy}>
             <Unlink className="mr-1 h-3 w-3" /> Unlink
           </Button>

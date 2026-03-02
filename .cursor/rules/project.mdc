@@ -1,0 +1,40 @@
+---
+description: Estándares de Desarrollo y Calidad - PerennialPark Next.js
+globs: ["perennialpark-app/**/*"]
+alwaysApply: true
+---
+
+# 🎯 Estándares de Desarrollo: PerennialPark App
+
+## 1. Idioma y Comunicación (Inquebrantable)
+- **Interfaz (UI):** Todo el texto, labels, placeholders y contenido debe estar en **Inglés**. Soporte nativo para **Hebreo** (RTL) donde se requiera.
+- **Comunicación con Usuario:** El chat, explicaciones y estrategia deben ser en **Español**.
+- **Código:** Nombramiento de variables, funciones, rutas y comentarios técnicos en **Inglés**.
+
+## 2. Diseño y UX (Mobile-First & Consistency)
+- **Estándar Visual:** Mantener la coherencia estética con los componentes ya existentes en el proyecto.
+- **UI Kit:** Uso exclusivo de **Tailwind CSS + Shadcn/UI**. Prohibido el CSS inline o archivos .css adicionales (salvo `globals.css`).
+- **Estados de Interfaz:** Cada nueva vista DEBE incluir:
+  - Skeletons de carga (Suspense).
+  - Manejo de errores visuales (Error Boundaries).
+  - Empty states (cuando no hay datos).
+- **Responsive:** Diseño Mobile-first estricto. La interfaz debe ser perfecta en móviles antes de escalar a desktop.
+
+## 3. Arquitectura y Lógica de Datos (Next.js Pro)
+- **Server Components (RSC):** Fetching de datos por defecto en el servidor para SEO y rendimiento.
+- **Client Components:** Usar `"use client"` solo para interactividad, animaciones o TanStack Query (mutaciones).
+- **Validación:** Uso obligatorio de **Zod** para tipar respuestas de API y validar formularios.
+- **Modularidad:** Componentes pequeños (Single Responsibility Principle). Si un archivo supera las 150 líneas, evaluar fragmentación en sub-componentes.
+- **Optimización:** Uso de `next/image` para multimedia y fuentes optimizadas de Next.js.
+
+## 4. Protocolo de "Cero Alucinación" y Control
+- **No Asumir:** Si necesitas una URL de API, un modelo de datos o una credencial, PREGUNTA. No inventes placeholders.
+- **Sin Archivos Basura:** Prohibido generar archivos .txt o .md para explicaciones.
+- **Flujo de Trabajo:** 1. Analizar el requerimiento.
+  2. Proponer la estructura y lógica en el chat (Español).
+  3. Esperar aprobación antes de escribir o modificar código.
+
+## 5. Rendimiento y Seguridad
+- **Limpieza:** Eliminar importaciones no utilizadas y código muerto inmediatamente.
+- **Seguridad:** No exponer variables de entorno en el cliente (`NEXT_PUBLIC_` solo si es estrictamente necesario).
+- **Eficiencia:** Evitar renders innecesarios y redundancia de lógica.

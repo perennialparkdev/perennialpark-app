@@ -19,11 +19,19 @@ import {
   resetOwnerPassword,
   sendOwnerInvitation,
 } from "@/lib/api/units";
+import { fetchRoles, type Role } from "@/lib/api/roles";
 import AdminUnitCard from "@/components/admin/AdminUnitCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function sortListByUnitNumber(items: UnitListItem[]): UnitListItem[] {
   return [...items].sort((a, b) => {
@@ -50,6 +58,7 @@ export default function AdminUnitsPage() {
   const [editingItem, setEditingItem] = useState<UnitListItem | null>(null);
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [roles, setRoles] = useState<Role[]>([]);
 
   const [form, setForm] = useState({
     unit_number: "",
@@ -99,6 +108,15 @@ export default function AdminUnitsPage() {
     }
   }, [statusFilter, router]);
 
+  const loadRoles = useCallback(async () => {
+    try {
+      const data = await fetchRoles(1);
+      setRoles(data);
+    } catch {
+      setRoles([]);
+    }
+  }, []);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -111,7 +129,8 @@ export default function AdminUnitsPage() {
       return;
     }
     loadUnits();
-  }, [mounted, router, loadUnits]);
+    loadRoles();
+  }, [mounted, router, loadUnits, loadRoles]);
 
   const openCreate = () => {
     setEditingItem(null);
@@ -162,11 +181,11 @@ export default function AdminUnitsPage() {
       husband_first: husband?.husband_first ?? "",
       husband_email: husband?.husband_email ?? "",
       husband_phone: husband?.husband_phone ?? "",
-      husband_role: "",
+      husband_role: husband?.idRol ?? "",
       wife_first: wife?.wife_first ?? "",
       wife_email: wife?.wife_email ?? "",
       wife_phone: wife?.wife_phone ?? "",
-      wife_role: "",
+      wife_role: wife?.idRol ?? "",
       children: children?.length ? [...children] : [],
     });
     setShowModal(true);
@@ -215,6 +234,7 @@ export default function AdminUnitsPage() {
                   last_name: form.last_name.trim() || undefined,
                   husband_email: form.husband_email.trim() || undefined,
                   husband_phone: form.husband_phone.trim() || undefined,
+                  idRol: form.husband_role || undefined,
                 }
               : undefined,
           wife:
@@ -224,6 +244,7 @@ export default function AdminUnitsPage() {
                   last_name: form.last_name.trim() || undefined,
                   wife_email: form.wife_email.trim() || undefined,
                   wife_phone: form.wife_phone.trim() || undefined,
+                  idRol: form.wife_role || undefined,
                 }
               : undefined,
           children: form.children.length > 0 ? form.children : undefined,
@@ -647,22 +668,44 @@ export default function AdminUnitsPage() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="husband_role">Husband role (UI only)</Label>
-                          <Input
-                            id="husband_role"
+                          <Label htmlFor="husband_role">Husband role</Label>
+                          <Select
                             value={form.husband_role}
-                            onChange={(e) => setForm((f) => ({ ...f, husband_role: e.target.value }))}
-                            placeholder="e.g. Admin"
-                          />
+                            onValueChange={(value) =>
+                              setForm((f) => ({ ...f, husband_role: value }))
+                            }
+                          >
+                            <SelectTrigger id="husband_role">
+                              <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {roles.map((role) => (
+                                <SelectItem key={role._id} value={role._id}>
+                                  {role.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="wife_role">Wife role (UI only)</Label>
-                          <Input
-                            id="wife_role"
+                          <Label htmlFor="wife_role">Wife role</Label>
+                          <Select
                             value={form.wife_role}
-                            onChange={(e) => setForm((f) => ({ ...f, wife_role: e.target.value }))}
-                            placeholder="e.g. Member"
-                          />
+                            onValueChange={(value) =>
+                              setForm((f) => ({ ...f, wife_role: value }))
+                            }
+                          >
+                            <SelectTrigger id="wife_role">
+                              <SelectValue placeholder="Select role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {roles.map((role) => (
+                                <SelectItem key={role._id} value={role._id}>
+                                  {role.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     </section>
