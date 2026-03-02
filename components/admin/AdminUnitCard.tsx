@@ -1,23 +1,12 @@
 "use client";
 
-import {
-  Edit2,
-  Trash2,
-  CheckCircle,
-  XCircle,
-  Unlink,
-  RefreshCw,
-  Mail,
-  User,
-} from "lucide-react";
+import { Edit2, Trash2, Unlink, RefreshCw, Mail, User } from "lucide-react";
 import type { Unit, UnitListItem } from "@/lib/api/units";
-import { OWNER_STATUS_PENDING } from "@/lib/api/units";
+import { OWNER_STATUS_ACTIVE, OWNER_STATUS_PENDING } from "@/lib/api/units";
+import { getStoredRole } from "@/lib/api/owners";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-
-const STATUS_ACTIVE = 1;
-const STATUS_ANULADO = 2;
 
 export interface AdminUnitCardProps {
   /** Full list item from GET /api/units (unit + husband, wife, children, message, preliminarOwner). */
@@ -36,8 +25,6 @@ export default function AdminUnitCard({
   listItem,
   onEdit,
   onDelete,
-  onActivate,
-  onAnular,
   onUnlink,
   onResetPassword,
   onSendInvitation,
@@ -45,8 +32,6 @@ export default function AdminUnitCard({
 }: AdminUnitCardProps) {
   const { unit, husband, wife, message, preliminarOwner } = listItem;
   const busy = actionLoading === unit._id;
-  const isActive = unit.status === STATUS_ACTIVE;
-  const isAnulado = unit.status === STATUS_ANULADO;
   const hasOwners = husband !== null || wife !== null;
   const subtitle =
     husband?.last_name ?? wife?.last_name ?? preliminarOwner?.last_name ?? "";
@@ -93,6 +78,7 @@ export default function AdminUnitCard({
                   name={[husband.husband_first, husband.last_name].filter(Boolean).join(" ")}
                   email={husband.husband_email}
                   ownerStatus={husband.status}
+                  password={husband.password}
                   unitId={unit._id}
                   busy={busy}
                   onResetPassword={onResetPassword}
@@ -105,6 +91,7 @@ export default function AdminUnitCard({
                   name={[wife.wife_first, wife.last_name].filter(Boolean).join(" ")}
                   email={wife.wife_email}
                   ownerStatus={wife.status}
+                  password={wife.password}
                   unitId={unit._id}
                   busy={busy}
                   onResetPassword={onResetPassword}
@@ -152,6 +139,7 @@ function OwnerBlock({
   name,
   email,
   ownerStatus,
+  password,
   unitId,
   busy,
   onResetPassword,
@@ -162,12 +150,16 @@ function OwnerBlock({
   email: string;
   /** -1 pending, 0 anulado, 1 activo; only pending (-1) can receive invitation */
   ownerStatus: number;
+  password: string | null;
   unitId: string;
   busy: boolean;
   onResetPassword: (id: string, email: string) => void;
   onSendInvitation: (id: string, email: string) => void;
 }) {
   const canSendInvitation = ownerStatus === OWNER_STATUS_PENDING;
+  const storedRole = getStoredRole();
+  const isAdmin = storedRole?.name === "admin";
+
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-1.5 text-xs font-medium text-slate-600">
@@ -179,6 +171,28 @@ function OwnerBlock({
         {name && email && " — "}
         {email && <span>{email}</span>}
       </div>
+      {isAdmin && (email || password) && (
+        <div className="space-y-0.5 rounded-md bg-emerald-50 px-2 py-1 text-[11px] text-emerald-900">
+          {email && (
+            <div>
+              <span className="font-semibold">Username:</span> {email}
+            </div>
+          )}
+          {password && (
+            <div>
+              <span className="font-semibold">Password:</span> {password}
+            </div>
+          )}
+          <div className="text-[10px]">
+            {ownerStatus === OWNER_STATUS_ACTIVE && "Linked: owner is active in the system."}
+            {ownerStatus === OWNER_STATUS_PENDING &&
+              "Pending: invitation not completed; owner not yet linked."}
+            {ownerStatus !== OWNER_STATUS_ACTIVE &&
+              ownerStatus !== OWNER_STATUS_PENDING &&
+              "Inactive owner."}
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap gap-1">
         <Button
           variant="outline"
