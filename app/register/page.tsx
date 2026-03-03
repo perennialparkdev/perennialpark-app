@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import { checkPhoneLink } from "@/lib/api/owners";
 
 const SECRET_CODE = "PP2026";
 
@@ -31,6 +32,7 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
 
   const [unitNumber, setUnitNumber] = useState<string | null>(null);
+  const [linkedAsOwner, setLinkedAsOwner] = useState(false);
 
   const handleCodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,15 +46,28 @@ export default function RegisterPage() {
 
   const handleVerifySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!phone.trim()) {
+      setError("Phone number is required.");
+      return;
+    }
     setLoading(true);
     setError("");
 
     try {
-      // TODO: Replace with API call when backend is ready
-      // const response = await api.verifyUnit({ firstName, lastName, phone });
-      await new Promise((r) => setTimeout(r, 600));
-      setUnitNumber("101");
-      setStep("success");
+      const response = await checkPhoneLink(phone.trim());
+      if (response.success && response.data?.unit_number) {
+        setUnitNumber(response.data.unit_number);
+        setLinkedAsOwner(false);
+        setStep("success");
+        return;
+      }
+      if (response.success && response.data?.linkedAsOwner) {
+        setUnitNumber(null);
+        setLinkedAsOwner(true);
+        setStep("success");
+        return;
+      }
+      setError(response.message || "Your phone number is not linked to any unit.");
     } catch {
       setError("Error verifying unit. Please try again.");
     } finally {
@@ -172,7 +187,7 @@ export default function RegisterPage() {
                 {loading ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
-                  "Register"
+                  "Verify"
                 )}
               </Button>
             </form>
@@ -182,19 +197,24 @@ export default function RegisterPage() {
     );
   }
 
-  if (step === "success" && unitNumber) {
+  if (step === "success" && (unitNumber || linkedAsOwner)) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-emerald-50 to-sky-100 p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-green-600">Unit Verified!</CardTitle>
-            <CardDescription>Unit #{unitNumber}</CardDescription>
+            <CardTitle className="text-green-600">
+              {unitNumber ? "Unit Verified!" : "Already Registered"}
+            </CardTitle>
+            <CardDescription>
+              {unitNumber ? `Unit #${unitNumber}` : "This phone is linked to a unit as owner."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="rounded border border-emerald-200 bg-emerald-50 p-4">
               <p className="text-sm text-emerald-900">
-                Your unit has been verified. You can now sign in and create your
-                account.
+                {unitNumber
+                  ? "Your unit has been verified. You can now sign in and create your account."
+                  : "This phone number is already linked to a unit as a registered owner. Sign in to access your account."}
               </p>
             </div>
             <Button

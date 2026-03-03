@@ -12,6 +12,29 @@ export type CheckUnitResponse = {
   data?: { unitId: string; unit_number: string };
 };
 
+/** Response from POST /api/owners/check-phone (verify phone linked to a unit). */
+export type CheckPhoneLinkResponse = {
+  success: boolean;
+  message: string;
+  data?: { unit_number?: string; linkedAsOwner?: boolean };
+};
+
+export async function checkPhoneLink(phone: string): Promise<CheckPhoneLinkResponse> {
+  const res = await fetch(`${getBaseUrl()}/api/owners/check-phone`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone: phone.trim() }),
+  });
+  const data = (await res.json()) as CheckPhoneLinkResponse;
+  if (res.status >= 400) {
+    return {
+      success: false,
+      message: data.message ?? "Request failed",
+    };
+  }
+  return data;
+}
+
 export async function checkUnitAccess(
   unitNumber: string
 ): Promise<CheckUnitResponse> {
@@ -63,6 +86,7 @@ export type LoginOwnerRole = {
 
 /** Owner data returned by login when user is registered as owner (OWNERS.md). */
 export type LoginOwner = {
+  id: string;
   ownerType: "husband" | "wife";
   last_name?: string;
   husband_first?: string;
@@ -192,8 +216,9 @@ export const UNIT_ID_KEY = "pp_unit_id";
 export const ROLE_KEY = "pp_role";
 export const USER_INFO_KEY = "pp_user_info";
 
-/** Stored after login for sidebar display (unit number, email, display name). */
+/** Stored after login for sidebar display (unit number, email, display name, owner id). */
 export type StoredUserInfo = {
+  id?: string;
   unitNumber?: string;
   email?: string;
   displayName?: string;
@@ -274,6 +299,7 @@ export function setStoredUserInfo(info: StoredUserInfo | null | undefined): void
     return;
   }
   localStorage.setItem(USER_INFO_KEY, JSON.stringify({
+    id: info.id ?? "",
     unitNumber: info.unitNumber ?? "",
     email: info.email ?? "",
     displayName: info.displayName ?? "",

@@ -26,6 +26,18 @@ export function formatShabbosDate(dateStr: string): string {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+/** Given a Shabbos date (Saturday) as YYYY-MM-DD, returns the Sunday–Saturday range for that week. */
+export function getWeekRangeForShabbos(dateStr: string): { from: string; to: string } {
+  const saturday = new Date(dateStr + "T12:00:00");
+  const to = saturday.toISOString().split("T")[0];
+  const dayOfWeek = saturday.getDay();
+  const daysSinceSunday = dayOfWeek; // 0 for Sunday ... 6 for Saturday
+  const sunday = new Date(saturday);
+  sunday.setDate(saturday.getDate() - daysSinceSunday);
+  const from = sunday.toISOString().split("T")[0];
+  return { from, to };
+}
+
 /** Approximate Gregorian dates for Jewish holidays in the given year (for week label). */
 export function getJewishHolidayForWeek(dateStr: string): string | null {
   const date = new Date(dateStr + "T12:00:00");

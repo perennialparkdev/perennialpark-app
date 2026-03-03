@@ -3,21 +3,38 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { getStoredToken, getStoredUnitId } from "@/lib/api/owners";
+import {
+  getStoredToken,
+  getStoredUnitId,
+  getStoredRole,
+  hasAdminAccess,
+} from "@/lib/api/owners";
 import { clearStoredToken } from "@/lib/api/owners";
 import { fetchUnitById } from "@/lib/api/units";
 import type { UnitListItem } from "@/lib/api/units";
-import { getNextShabbosTransition, getThisShabbos } from "@/lib/utils-date";
+import { getNextShabbosTransition, getThisShabbos, getWeekRangeForShabbos } from "@/lib/utils-date";
 import ShabbosCard from "@/components/portal/ShabbosCard";
 import WeekNavigation from "@/components/portal/WeekNavigation";
 import RsvpCard from "@/components/portal/RsvpCard";
-import type { RsvpStatus } from "@/components/portal/RsvpCard";
-import AttendanceCard from "@/components/portal/AttendanceCard";
+import type { RsvpStatus as UiRsvpStatus } from "@/components/portal/RsvpCard";
+import AttendanceCard, { type AttendanceItem } from "@/components/portal/AttendanceCard";
 import HomeUnitCard from "@/components/portal/HomeUnitCard";
 import ZmanimCard from "@/components/portal/ZmanimCard";
 import ChofetzChaimCard from "@/components/portal/ChofetzChaimCard";
 import ClassifiedsPreview from "@/components/portal/ClassifiedsPreview";
 import RentalCalendar from "@/components/portal/RentalCalendar";
+import {
+  buildChecksFromFlags,
+  extractFlagsFromChecks,
+  type RsvpRecord,
+  type RsvpStatusApi,
+  listRsvps,
+  listRsvpsByUnit,
+  createRsvp,
+  updateRsvp,
+  deleteRsvp,
+  getCurrentOwnerId,
+} from "@/lib/api/rsvps";
 import WeatherCard, { WeatherBar } from "@/components/portal/WeatherCard";
 import DaveningTimesBar from "@/components/portal/DaveningTimesBar";
 
@@ -28,7 +45,7 @@ export default function HomePage() {
   const [unitLoading, setUnitLoading] = useState(true);
 
   const [shabbosWeek, setShabbosWeek] = useState(getThisShabbos());
-  const [rsvpStatus, setRsvpStatus] = useState<RsvpStatus>("no");
+  const [rsvpStatus, setRsvpStatus] = useState<UiRsvpStatus>("no");
   const [menCount, setMenCount] = useState(0);
   const [guestMenCount, setGuestMenCount] = useState(0);
   const [onlyIfMinyan, setOnlyIfMinyan] = useState(false);
@@ -36,6 +53,11 @@ export default function HomePage() {
   const [haveSeferTorah, setHaveSeferTorah] = useState(false);
   const [baalKoreh, setBaalKoreh] = useState(false);
   const [savingRsvp, setSavingRsvp] = useState(false);
+  const [currentRsvpId, setCurrentRsvpId] = useState<string | null>(null);
+
+  const [comingList, setComingList] = useState<AttendanceItem[]>([]);
+  const [maybeList, setMaybeList] = useState<AttendanceItem[]>([]);
+  const [totalMen, setTotalMen] = useState(0);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -93,19 +115,181 @@ export default function HomePage() {
     }
   }, [router]);
 
+  const resetRsvpForm = useCallback(() => {
+    setRsvpStatus("no");
+    setMenCount(0);
+    setGuestMenCount(0);
+    setOnlyIfMinyan(false);
+    setOnlyIfSeferTorah(false);
+    setHaveSeferTorah(false);
+    setBaalKoreh(false);
+    setCurrentRsvpId(null);
+  }, []);
+
+  const hydrateRsvpFromRecord = useCallback(
+    (record: RsvpRecord) => {
+      let uiStatus: UiRsvpStatus = "no";
+      if (record.status === "Coming") uiStatus = "yes";
+      else if (record.status === "Maybe") uiStatus = "maybe";
+
+      const flags = extractFlagsFromChecks(record.checks);
+
+      setRsvpStatus(uiStatus);
+      setMenCount(record.howManyMen ?? 0);
+      setGuestMenCount(record.guests ?? 0);
+      setOnlyIfMinyan(flags.onlyIfMinyan);
+      setOnlyIfSeferTorah(flags.onlyIfSeferTorah);
+      setHaveSeferTorah(flags.haveSeferTorah);
+      setBaalKoreh(flags.baalKoreh);
+      setCurrentRsvpId(record._id);
+    },
+    [],
+  );
+
+  const loadRsvpsForWeek = useCallback(
+    async (week: string) => {
+      const { from, to } = getWeekRangeForShabbos(week);
+      const ownerId = getCurrentOwnerId();
+      const unitId = getStoredUnitId();
+
+      try {
+        const [summary, unitRsvps] = await Promise.all([
+          listRsvps(from, to),
+          unitId ? listRsvpsByUnit(unitId, from, to) : Promise.resolve([]),
+        ]);
+
+        const mapToAttendanceItem = (record: RsvpRecord): AttendanceItem => {
+          const owner = record.idOwnerHusbandUser;
+          const unit = record.idUnit;
+          const name = [owner?.husband_first, owner?.last_name].filter(Boolean).join(" ") || "Unknown";
+          const tags = record.checks?.map((c) => c.check) ?? [];
+          return {
+            rsvpId: record._id,
+            name,
+            unit: unit?.unit_number ?? "",
+            men: (record.howManyMen ?? 0) + (record.guests ?? 0),
+            tags,
+          };
+        };
+
+        setComingList(summary.comings.map(mapToAttendanceItem));
+        setMaybeList(summary.maybes.map(mapToAttendanceItem));
+        setTotalMen(summary.total ?? 0);
+
+        if (ownerId && unitRsvps.length > 0) {
+          const mine = unitRsvps.filter(
+            (r) => r.idOwnerHusbandUser && r.idOwnerHusbandUser._id === ownerId,
+          );
+          if (mine.length > 0) {
+            const latest = mine.reduce((acc, cur) => {
+              const accDate = new Date(acc.updatedAt ?? acc.createdAt);
+              const curDate = new Date(cur.updatedAt ?? cur.createdAt);
+              return curDate > accDate ? cur : acc;
+            });
+            hydrateRsvpFromRecord(latest);
+          } else {
+            resetRsvpForm();
+          }
+        } else if (ownerId) {
+          resetRsvpForm();
+        }
+      } catch (error) {
+        // For now, silently fail and keep local state; errors can be surfaced with a toast if needed.
+        console.error("Failed to load RSVPs", error);
+      }
+    },
+    [hydrateRsvpFromRecord, resetRsvpForm],
+  );
+
   useEffect(() => {
     if (!authChecked) return;
     loadUnit();
-  }, [authChecked, loadUnit]);
+    loadRsvpsForWeek(shabbosWeek);
+  }, [authChecked, loadUnit, loadRsvpsForWeek, shabbosWeek]);
 
-  const handleSaveRsvp = () => {
-    setSavingRsvp(true);
-    setTimeout(() => setSavingRsvp(false), 600);
-  };
+  const handleSaveRsvp = useCallback(
+    async () => {
+      setSavingRsvp(true);
+      try {
+        const unitId = getStoredUnitId();
+        const ownerId = getCurrentOwnerId();
+        console.log("ownerId", ownerId, "unitId", unitId);
+        if (!unitId || !ownerId) {
+          throw new Error("Missing unit or owner information.");
+        }
 
-  const handleDeleteRsvp = (_rsvpId: string) => {
-    // Phase 2: call API
-  };
+        const checks = buildChecksFromFlags({
+          onlyIfMinyan,
+          onlyIfSeferTorah,
+          haveSeferTorah,
+          baalKoreh,
+        });
+
+        const statusMap: Record<UiRsvpStatus, RsvpStatusApi> = {
+          yes: "Coming",
+          maybe: "Maybe",
+          no: "Not Coming",
+        };
+
+        const status = statusMap[rsvpStatus];
+        const dateIso = new Date(shabbosWeek + "T12:00:00").toISOString();
+
+        if (currentRsvpId) {
+          await updateRsvp(currentRsvpId, {
+            status,
+            howManyMen: menCount,
+            guests: guestMenCount,
+            checks,
+            date: dateIso,
+          });
+        } else {
+          const created = await createRsvp({
+            status,
+            howManyMen: menCount,
+            guests: guestMenCount,
+            checks,
+            idOwnerHusbandUser: ownerId,
+            idUnit: unitId,
+            date: dateIso,
+          });
+          setCurrentRsvpId(created._id);
+        }
+
+        await loadRsvpsForWeek(shabbosWeek);
+      } catch (error) {
+        console.error("Failed to save RSVP", error);
+      } finally {
+        setSavingRsvp(false);
+      }
+    },
+    [
+      baalKoreh,
+      currentRsvpId,
+      guestMenCount,
+      haveSeferTorah,
+      menCount,
+      onlyIfMinyan,
+      onlyIfSeferTorah,
+      rsvpStatus,
+      shabbosWeek,
+      loadRsvpsForWeek,
+    ],
+  );
+
+  const handleDeleteRsvp = useCallback(
+    async (rsvpId: string) => {
+      try {
+        await deleteRsvp(rsvpId);
+        if (currentRsvpId === rsvpId) {
+          resetRsvpForm();
+        }
+        await loadRsvpsForWeek(shabbosWeek);
+      } catch (error) {
+        console.error("Failed to delete RSVP", error);
+      }
+    },
+    [currentRsvpId, loadRsvpsForWeek, resetRsvpForm, shabbosWeek],
+  );
 
   if (!authChecked) {
     return (
@@ -114,6 +298,8 @@ export default function HomePage() {
       </div>
     );
   }
+
+  const isAdmin = hasAdminAccess(getStoredRole());
 
   return (
     <div
@@ -155,10 +341,10 @@ export default function HomePage() {
               saving={savingRsvp}
             />
             <AttendanceCard
-              comingList={[]}
-              maybeList={[]}
-              totalMen={0}
-              isAdmin={false}
+              comingList={comingList}
+              maybeList={maybeList}
+              totalMen={totalMen}
+              isAdmin={isAdmin}
               onDeleteRsvp={handleDeleteRsvp}
             />
             <ZmanimCard />
@@ -204,10 +390,10 @@ export default function HomePage() {
                 saving={savingRsvp}
               />
               <AttendanceCard
-                comingList={[]}
-                maybeList={[]}
-                totalMen={0}
-                isAdmin={false}
+                comingList={comingList}
+                maybeList={maybeList}
+                totalMen={totalMen}
+                isAdmin={isAdmin}
                 onDeleteRsvp={handleDeleteRsvp}
               />
             </div>

@@ -128,6 +128,7 @@ export default function SignInPage() {
             unitNumber: result.data.unit?.unit_number,
             email: result.data.email,
             displayName: getOwnerDisplayName(result.data.owner),
+            id: result.data.owner?.id,
           });
           router.push("/home");
         } else {
