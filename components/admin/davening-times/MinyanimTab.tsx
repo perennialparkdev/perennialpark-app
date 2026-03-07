@@ -18,7 +18,6 @@ import { MINYANIM_SEGMENTS } from "@/lib/meetings-config";
 import { MinyanRow, type MinyanRowData } from "./MinyanRow";
 
 const MODEL_KEY = "meeting";
-const PERIOD = "Weekly";
 
 function segmentToType(
   categories: MeetingCategory[],
@@ -45,21 +44,23 @@ function recordToRow(r: Record<string, unknown>): MinyanRowData {
 }
 
 /** Build create/update body for meeting. */
-function rowToBody(idType: string, row: MinyanRowData) {
+function rowToBody(idType: string, row: MinyanRowData, period: string) {
   return {
     idType,
     name: row.name ?? row.minyan_name ?? "",
     location: row.location ?? "",
     time: row.time,
-    period: PERIOD,
+    period,
   };
 }
 
 interface MinyanimTabProps {
   structure: MeetingCategory[];
+  /** Monday of the week (YYYY-MM-DD). */
+  period: string;
 }
 
-export function MinyanimTab({ structure }: MinyanimTabProps) {
+export function MinyanimTab({ structure, period }: MinyanimTabProps) {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -76,19 +77,20 @@ export function MinyanimTab({ structure }: MinyanimTabProps) {
   }));
 
   const listQueries = useQuery({
-    queryKey: ["meetings", "minyanim", queries.map((q) => q.key)],
+    queryKey: ["meetings", "minyanim", period, queries.map((q) => q.key)],
     queryFn: async () => {
       const results: Record<string, MinyanRowData[]> = {};
       for (const { segmentKey, type } of segmentsWithTypes) {
         const list = await listMeetings<Record<string, unknown>>(MODEL_KEY, {
           status: 1,
           idType: type._id,
+          period,
         });
         results[segmentKey] = list.map(recordToRow);
       }
       return results;
     },
-    enabled: segmentsWithTypes.length > 0,
+    enabled: segmentsWithTypes.length > 0 && !!period,
   });
 
   const [local, setLocal] = useState<Record<string, MinyanRowData[]>>({});
@@ -144,7 +146,7 @@ export function MinyanimTab({ structure }: MinyanimTabProps) {
         }
         for (const row of toUpdate) {
           try {
-            await updateMeeting(MODEL_KEY, row._id!, rowToBody(type._id, row) as Record<string, unknown>);
+            await updateMeeting(MODEL_KEY, row._id!, rowToBody(type._id, row, period) as Record<string, unknown>);
           } catch (err) {
             errors.push(`${segmentKey} update: ${err instanceof Error ? err.message : "Failed"}`);
           }
@@ -152,7 +154,7 @@ export function MinyanimTab({ structure }: MinyanimTabProps) {
         for (const row of toCreate) {
           if (!row.time) continue;
           try {
-            await createMeeting(MODEL_KEY, rowToBody(type._id, row) as Record<string, unknown>);
+            await createMeeting(MODEL_KEY, rowToBody(type._id, row, period) as Record<string, unknown>);
           } catch (err) {
             errors.push(`${segmentKey} create: ${err instanceof Error ? err.message : "Failed"}`);
           }

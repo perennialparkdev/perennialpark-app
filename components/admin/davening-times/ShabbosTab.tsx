@@ -28,7 +28,6 @@ import { MinyanRow, type MinyanRowData } from "./MinyanRow";
 
 const MEVORCHIM_MODEL = "shabbos-mevorchim-meeting";
 const MEETING_MODEL = "meeting";
-const PERIOD = "Weekly";
 
 function recordToRow(r: Record<string, unknown>): MinyanRowData {
   return {
@@ -42,9 +41,11 @@ function recordToRow(r: Record<string, unknown>): MinyanRowData {
 
 interface ShabbosTabProps {
   structure: MeetingCategory[];
+  /** Monday of the week (YYYY-MM-DD). */
+  period: string;
 }
 
-export function ShabbosTab({ structure }: ShabbosTabProps) {
+export function ShabbosTab({ structure, period }: ShabbosTabProps) {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -65,31 +66,33 @@ export function ShabbosTab({ structure }: ShabbosTabProps) {
   const [localMinyanim, setLocalMinyanim] = useState<Record<string, MinyanRowData[]>>({});
 
   const mevorchimQuery = useQuery({
-    queryKey: ["meetings", MEVORCHIM_MODEL, mevorchimType?._id],
+    queryKey: ["meetings", MEVORCHIM_MODEL, mevorchimType?._id, period],
     queryFn: async () => {
       if (!mevorchimType) return [];
       return listMeetings<Record<string, unknown>>(MEVORCHIM_MODEL, {
         status: 1,
         idType: mevorchimType._id,
+        period,
       });
     },
-    enabled: !!mevorchimType,
+    enabled: !!mevorchimType && !!period,
   });
 
   const minyanimQuery = useQuery({
-    queryKey: ["meetings", "shabbos-minyanim", segmentsWithTypes.map((s) => s.type!._id)],
+    queryKey: ["meetings", "shabbos-minyanim", period, segmentsWithTypes.map((s) => s.type!._id)],
     queryFn: async () => {
       const results: Record<string, MinyanRowData[]> = {};
       for (const { segmentKey, type } of segmentsWithTypes) {
         const list = await listMeetings<Record<string, unknown>>(MEETING_MODEL, {
           status: 1,
           idType: type!._id,
+          period,
         });
         results[segmentKey] = list.map(recordToRow);
       }
       return results;
     },
-    enabled: segmentsWithTypes.length > 0,
+    enabled: segmentsWithTypes.length > 0 && !!period,
   });
 
   const mevorchimFirst = (mevorchimQuery.data ?? [])[0] as Record<string, unknown> | undefined;
@@ -145,7 +148,7 @@ export function ShabbosTab({ structure }: ShabbosTabProps) {
           time: mevorchimTime,
           location: mevorchimLocation,
           notes: mevorchimNotes,
-          period: PERIOD,
+          period,
         };
         try {
           if (existing?._id) {
@@ -179,7 +182,7 @@ export function ShabbosTab({ structure }: ShabbosTabProps) {
               name: row.name ?? row.minyan_name ?? "",
               location: row.location ?? "",
               time: row.time,
-              period: PERIOD,
+              period,
             });
           } catch (err) {
             errors.push(`${segmentKey}: ${err instanceof Error ? err.message : "Failed"}`);
@@ -193,7 +196,7 @@ export function ShabbosTab({ structure }: ShabbosTabProps) {
               name: row.name ?? row.minyan_name ?? "",
               location: row.location ?? "",
               time: row.time,
-              period: PERIOD,
+              period,
             });
           } catch (err) {
             errors.push(`${segmentKey}: ${err instanceof Error ? err.message : "Failed"}`);

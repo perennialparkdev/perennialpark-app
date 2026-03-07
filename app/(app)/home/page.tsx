@@ -317,7 +317,11 @@ export default function HomePage() {
           {/* Mobile */}
           <div className="max-w-full space-y-6 overflow-hidden pb-8 lg:hidden">
             <WeatherBar />
-            <HomeUnitCard listItem={unitListItem} loading={unitLoading} />
+            <HomeUnitCard
+              listItem={unitListItem}
+              loading={unitLoading}
+              onUnitUpdated={(item) => setUnitListItem(item)}
+            />
             <ShabbosCard shabbosDate={shabbosWeek} />
             <WeekNavigation currentWeek={shabbosWeek} onWeekChange={setShabbosWeek} />
             <RsvpCard
@@ -351,18 +355,19 @@ export default function HomePage() {
             <ChofetzChaimCard />
             <ClassifiedsPreview />
             <RentalCalendar
-              rentals={[]}
-              userUnit={null}
-              onAddRental={() => {}}
-              onDeleteRental={() => {}}
-              isAdmin={false}
+              userUnit={unitListItem?.unit?.unit_number ?? null}
+              isAdmin={isAdmin}
             />
           </div>
 
           {/* Desktop */}
           <div className="hidden gap-6 lg:grid lg:grid-cols-3">
             <div className="space-y-6">
-              <HomeUnitCard listItem={unitListItem} loading={unitLoading} />
+              <HomeUnitCard
+                listItem={unitListItem}
+                loading={unitLoading}
+                onUnitUpdated={(item) => setUnitListItem(item)}
+              />
               <ZmanimCard />
               <ChofetzChaimCard />
             </div>
@@ -401,11 +406,8 @@ export default function HomePage() {
               <WeatherCard />
               <ClassifiedsPreview />
               <RentalCalendar
-                rentals={[]}
-                userUnit={null}
-                onAddRental={() => {}}
-                onDeleteRental={() => {}}
-                isAdmin={false}
+                userUnit={unitListItem?.unit?.unit_number ?? null}
+                isAdmin={isAdmin}
               />
             </div>
           </div>

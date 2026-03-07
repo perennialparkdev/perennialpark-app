@@ -38,6 +38,41 @@ export function getWeekRangeForShabbos(dateStr: string): { from: string; to: str
   return { from, to };
 }
 
+/** Returns the Monday of the given date's week (or today's week if no date) as YYYY-MM-DD. Week = Mon–Sun. */
+export function getThisWeekMonday(date?: Date): string {
+  const d = date ? new Date(date) : new Date();
+  d.setHours(12, 0, 0, 0);
+  const day = d.getDay(); // 0 Sun ... 6 Sat
+  const daysToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + daysToMonday);
+  return monday.toISOString().split("T")[0];
+}
+
+/** Given Monday YYYY-MM-DD, returns Sunday of that week (Mon+6). */
+export function getSundayOfWeek(mondayStr: string): string {
+  const monday = new Date(mondayStr + "T12:00:00");
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return sunday.toISOString().split("T")[0];
+}
+
+/** Format week range for display: "Mon 2 - Sun 8" or "Mon 2 Mar - Sun 8 Mar". Weekday first, then day, so locale does not flip the order. */
+export function formatWeekRangeMonSun(mondayStr: string, withMonth = false): string {
+  const locale = "en-US";
+  const monday = new Date(mondayStr + "T12:00:00");
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const fmt = (d: Date) => {
+    const w = d.toLocaleDateString(locale, { weekday: "short" });
+    const day = d.toLocaleDateString(locale, { day: "numeric" });
+    return withMonth
+      ? `${w} ${day} ${d.toLocaleDateString(locale, { month: "short" })}`
+      : `${w} ${day}`;
+  };
+  return `${fmt(monday)} - ${fmt(sunday)}`;
+}
+
 /** Approximate Gregorian dates for Jewish holidays in the given year (for week label). */
 export function getJewishHolidayForWeek(dateStr: string): string | null {
   const date = new Date(dateStr + "T12:00:00");

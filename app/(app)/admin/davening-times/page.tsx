@@ -1,19 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import { getStoredToken } from "@/lib/api/owners";
-import { getMeetingsStructure } from "@/lib/api/meetings";
+import { getMeetingsStructure, deleteMeetingsByPeriod } from "@/lib/api/meetings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import WeekNavigation from "@/components/portal/WeekNavigation";
+import { getThisWeekMonday, formatWeekRangeMonSun } from "@/lib/utils-date";
 import { MinyanimTab } from "@/components/admin/davening-times/MinyanimTab";
 import { ShabbosTab } from "@/components/admin/davening-times/ShabbosTab";
 import { ShiurimTab } from "@/components/admin/davening-times/ShiurimTab";
 import { AnnouncementsTab } from "@/components/admin/davening-times/AnnouncementsTab";
 
 export default function AdminDaveningTimesPage() {
+  const queryClient = useQueryClient();
+  const [period, setPeriod] = useState<string>(() => getThisWeekMonday());
+
   const structureQuery = useQuery({
     queryKey: ["meetings", "structure"],
     queryFn: getMeetingsStructure,
@@ -27,6 +33,25 @@ export default function AdminDaveningTimesPage() {
 
   const { data: structure = [], isLoading, isError, error } = structureQuery;
   const forbidden = isError && (error instanceof Error && (error.message.includes("403") || error.message.includes("Access denied")));
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteMeetingsByPeriod(period),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["meetings"] });
+    },
+  });
+
+  const handleDelete = () => {
+    const weekLabel = formatWeekRangeMonSun(period);
+    if (
+      !window.confirm(
+        `This will permanently delete all davening times, minyanim, shiurim and announcements for the week of ${weekLabel}. Continue?`
+      )
+    ) {
+      return;
+    }
+    deleteMutation.mutate();
+  };
 
   if (typeof window !== "undefined" && !getStoredToken()) {
     return (
@@ -89,6 +114,29 @@ export default function AdminDaveningTimesPage() {
           </p>
         </div>
 
+        <div className="mb-6 space-y-4">
+          <WeekNavigation
+            currentWeek={period}
+            onWeekChange={setPeriod}
+            variant="week-range"
+          />
+          <div className="flex justify-end">
+            <Button
+            className="bg-red-700 hover:bg-red-600 text-white"
+              size="sm"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Delete all for this week
+            </Button>
+          </div>
+        </div>
+
         <Tabs defaultValue="minyanim" className="space-y-4">
           <TabsList className="grid w-full grid-cols-4 bg-white/80">
             <TabsTrigger value="minyanim">Minyanim</TabsTrigger>
@@ -98,19 +146,19 @@ export default function AdminDaveningTimesPage() {
           </TabsList>
 
           <TabsContent value="minyanim" className="space-y-4">
-            <MinyanimTab structure={structure} />
+            <MinyanimTab structure={structure} period={period} />
           </TabsContent>
 
           <TabsContent value="shabbos" className="space-y-4">
-            <ShabbosTab structure={structure} />
+            <ShabbosTab structure={structure} period={period} />
           </TabsContent>
 
           <TabsContent value="shiurim" className="space-y-4">
-            <ShiurimTab structure={structure} />
+            <ShiurimTab structure={structure} period={period} />
           </TabsContent>
 
           <TabsContent value="announcements" className="space-y-4">
-            <AnnouncementsTab structure={structure} />
+            <AnnouncementsTab structure={structure} period={period} />
           </TabsContent>
         </Tabs>
       </div>

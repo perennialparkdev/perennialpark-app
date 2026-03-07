@@ -38,15 +38,23 @@ const daveningTimesLink = { href: "/admin/davening-times", label: "Davening Time
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
-  const [hasToken] = useState(() => !!getStoredToken());
-  const [role] = useState<LoginOwnerRole | null>(() => getStoredRole());
-  const [userInfo] = useState<StoredUserInfo | null>(() => getStoredUserInfo());
+  const [hasToken, setHasToken] = useState(false);
+  const [role, setRole] = useState<LoginOwnerRole | null>(null);
+  const [userInfo, setUserInfo] = useState<StoredUserInfo | null>(null);
 
   const showManage = canAccessManageUnits(role);
   const showDaveningTimes = canAccessDaveningTimes(role);
   const showAdminLabel = hasAdminAccess(role);
   const showGabaimLabel = showDaveningTimes && !showManage;
+
+  useEffect(() => {
+    setMounted(true);
+    setHasToken(!!getStoredToken());
+    setRole(getStoredRole());
+    setUserInfo(getStoredUserInfo());
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -96,7 +104,7 @@ export function Navigation() {
         </div>
 
         <div className="flex-shrink-0 border-b border-emerald-600 bg-emerald-600/30 px-6 py-4">
-          {hasToken && (
+          {mounted && hasToken && (
             <>
               {userInfo?.unitNumber != null && userInfo.unitNumber !== "" && (
                 <p className="mb-1 text-xs text-emerald-200">
@@ -139,7 +147,7 @@ export function Navigation() {
                 </Link>
               </li>
             ))}
-            {showManage &&
+            {mounted && showManage &&
               manageNavLinks.map(({ href, label }) => (
                 <li key={href}>
                   <Link
@@ -156,7 +164,7 @@ export function Navigation() {
                   </Link>
                 </li>
               ))}
-            {showDaveningTimes && (
+            {mounted && showDaveningTimes && (
               <li key={daveningTimesLink.href}>
                 <Link
                   href={daveningTimesLink.href}

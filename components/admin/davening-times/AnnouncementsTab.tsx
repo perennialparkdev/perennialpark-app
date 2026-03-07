@@ -14,8 +14,6 @@ import {
   updateMeeting,
 } from "@/lib/api/meetings";
 
-const PERIOD = "Weekly";
-
 const ANNOUNCEMENT_CONFIG = [
   {
     key: "pirkeiAvis",
@@ -61,9 +59,11 @@ const ANNOUNCEMENT_CONFIG = [
 
 interface AnnouncementsTabProps {
   structure: MeetingCategory[];
+  /** Monday of the week (YYYY-MM-DD). */
+  period: string;
 }
 
-export function AnnouncementsTab({ structure }: AnnouncementsTabProps) {
+export function AnnouncementsTab({ structure, period }: AnnouncementsTabProps) {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -77,7 +77,7 @@ export function AnnouncementsTab({ structure }: AnnouncementsTabProps) {
   const [form, setForm] = useState<Record<string, string>>({});
 
   const queries = useQuery({
-    queryKey: ["meetings", "announcements", configsWithType.map((c) => [c.modelKey, c.type!._id])],
+    queryKey: ["meetings", "announcements", period, configsWithType.map((c) => [c.modelKey, c.type!._id])],
     queryFn: async () => {
       const values: Record<string, string> = {};
       const ids: Record<string, string> = {};
@@ -85,6 +85,7 @@ export function AnnouncementsTab({ structure }: AnnouncementsTabProps) {
         const list = await listMeetings<Record<string, unknown>>(modelKey, {
           status: 1,
           idType: type!._id,
+          period,
         });
         const first = list[0] as Record<string, unknown> | undefined;
         values[key] = (first?.[field] as string) ?? "";
@@ -92,7 +93,7 @@ export function AnnouncementsTab({ structure }: AnnouncementsTabProps) {
       }
       return { values, ids };
     },
-    enabled: configsWithType.length > 0,
+    enabled: configsWithType.length > 0 && !!period,
   });
 
   const mutation = useMutation({
@@ -108,7 +109,7 @@ export function AnnouncementsTab({ structure }: AnnouncementsTabProps) {
         const payload = {
           idType: type!._id,
           [field]: value,
-          period: PERIOD,
+          period,
         };
 
         try {

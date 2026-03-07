@@ -69,6 +69,8 @@ export type MeetingRecord = Record<string, unknown> & {
 export interface ListMeetingsParams {
   status?: 1 | 2;
   idType?: string;
+  /** Monday of the week (YYYY-MM-DD). Week = Mon–Sun. */
+  period?: string;
 }
 
 export async function listMeetings<T = MeetingRecord>(
@@ -78,6 +80,7 @@ export async function listMeetings<T = MeetingRecord>(
   const search = new URLSearchParams();
   if (params?.status !== undefined) search.set("status", String(params.status));
   if (params?.idType) search.set("idType", params.idType);
+  if (params?.period) search.set("period", params.period);
   const qs = search.toString();
   const url = `${getBaseUrl()}/api/meetings/${encodeURIComponent(modelKey)}${qs ? `?${qs}` : ""}`;
   const res = await fetch(url, { headers: getAuthHeaders() });
@@ -160,6 +163,25 @@ export async function anularMeeting(
     const json = (await res.json()) as ApiResponse;
     throw new Error(json.message ?? "Failed to anular");
   }
+}
+
+/** Delete all meetings/announcements for a week. period = Monday YYYY-MM-DD. */
+export interface DeleteByPeriodResult {
+  period: string;
+  deletedByModel: Record<string, number>;
+  totalDeleted: number;
+}
+
+export async function deleteMeetingsByPeriod(period: string): Promise<DeleteByPeriodResult> {
+  const res = await fetch(
+    `${getBaseUrl()}/api/meetings/period/${encodeURIComponent(period)}`,
+    { method: "DELETE", headers: getAuthHeaders() }
+  );
+  const json = (await res.json()) as ApiResponse<DeleteByPeriodResult>;
+  if (res.status === 403) throw new Error("Access denied.");
+  if (!res.ok) throw new Error(json.message ?? "Failed to delete by period");
+  if (!json.data) throw new Error("No data returned");
+  return json.data;
 }
 
 // --- Helpers: find type by category + name + weekDay ---

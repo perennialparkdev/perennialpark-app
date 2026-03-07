@@ -3,44 +3,63 @@
 import { Button } from "@/components/ui/button";
 import {
   formatShabbosDate,
+  formatWeekRangeMonSun,
   getThisShabbos,
+  getThisWeekMonday,
   getJewishHolidayForWeek,
 } from "@/lib/utils-date";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+export type WeekNavigationVariant = "shabbos" | "week-range";
+
 interface WeekNavigationProps {
+  /** For "shabbos": Saturday YYYY-MM-DD. For "week-range": Monday YYYY-MM-DD. */
   currentWeek: string;
   onWeekChange: (dateStr: string) => void;
+  /** "shabbos" = "Weekend of Mar 8". "week-range" = "Mon 2 - Sun 8". Default: "shabbos". */
+  variant?: WeekNavigationVariant;
 }
 
 export default function WeekNavigation({
   currentWeek,
   onWeekChange,
+  variant = "shabbos",
 }: WeekNavigationProps) {
-  const today = getThisShabbos();
-  const canGoPrevious = currentWeek > today;
-  const twoWeeksFromNow = new Date(today + "T12:00:00");
-  twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
-  const canGoNext =
-    currentWeek < twoWeeksFromNow.toISOString().split("T")[0];
+  const isWeekRange = variant === "week-range";
+  const thisWeekMonday = getThisWeekMonday();
+  const todayShabbos = getThisShabbos();
+
+  const minDate = isWeekRange ? undefined : todayShabbos;
+  const twoWeeksLater = new Date((isWeekRange ? thisWeekMonday : todayShabbos) + "T12:00:00");
+  twoWeeksLater.setDate(twoWeeksLater.getDate() + 14);
+  const maxDate = twoWeeksLater.toISOString().split("T")[0];
+
+  const canGoPrevious = isWeekRange ? true : currentWeek > (minDate ?? "");
+  const canGoNext = currentWeek < maxDate;
 
   const goToPrevious = () => {
     const current = new Date(currentWeek + "T12:00:00");
     current.setDate(current.getDate() - 7);
     const newDate = current.toISOString().split("T")[0];
-    if (newDate >= today) onWeekChange(newDate);
+    if (isWeekRange) {
+      onWeekChange(newDate);
+    } else if (newDate >= (minDate ?? "")) {
+      onWeekChange(newDate);
+    }
   };
 
   const goToNext = () => {
     const current = new Date(currentWeek + "T12:00:00");
     current.setDate(current.getDate() + 7);
     const newDate = current.toISOString().split("T")[0];
-    if (newDate <= twoWeeksFromNow.toISOString().split("T")[0]) {
-      onWeekChange(newDate);
-    }
+    if (newDate <= maxDate) onWeekChange(newDate);
   };
 
-  const holiday = getJewishHolidayForWeek(currentWeek);
+  const label = isWeekRange
+    ? formatWeekRangeMonSun(currentWeek)
+    : `Weekend of ${formatShabbosDate(currentWeek)}`;
+
+  const holiday = isWeekRange ? null : getJewishHolidayForWeek(currentWeek);
 
   return (
     <div className="space-y-2">
@@ -54,9 +73,7 @@ export default function WeekNavigation({
         >
           <ChevronLeft className="h-5 w-5" />
         </Button>
-        <div className="text-lg font-bold text-slate-800">
-          Weekend of {formatShabbosDate(currentWeek)}
-        </div>
+        <div className="text-lg font-bold text-slate-800">{label}</div>
         <Button
           variant="ghost"
           size="sm"

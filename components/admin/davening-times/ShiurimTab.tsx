@@ -19,13 +19,14 @@ import { TimePicker } from "@/components/ui/time-picker";
 
 const DAF_YOMI_MODEL = "daf-yomi-meeting";
 const ADDITIONAL_SHIURIM_MODEL = "additional-shiurim-meeting";
-const PERIOD = "Weekly";
 
 interface ShiurimTabProps {
   structure: MeetingCategory[];
+  /** Monday of the week (YYYY-MM-DD). */
+  period: string;
 }
 
-export function ShiurimTab({ structure }: ShiurimTabProps) {
+export function ShiurimTab({ structure, period }: ShiurimTabProps) {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -39,27 +40,29 @@ export function ShiurimTab({ structure }: ShiurimTabProps) {
   const [localShiurim, setLocalShiurim] = useState<Array<{ _id?: string; name?: string; time?: string; description?: string }>>([]);
 
   const dafYomiQuery = useQuery({
-    queryKey: ["meetings", DAF_YOMI_MODEL, dafYomiType?._id],
+    queryKey: ["meetings", DAF_YOMI_MODEL, dafYomiType?._id, period],
     queryFn: async () => {
       if (!dafYomiType) return [];
       return listMeetings<Record<string, unknown>>(DAF_YOMI_MODEL, {
         status: 1,
         idType: dafYomiType._id,
+        period,
       });
     },
-    enabled: !!dafYomiType,
+    enabled: !!dafYomiType && !!period,
   });
 
   const shiurimQuery = useQuery({
-    queryKey: ["meetings", ADDITIONAL_SHIURIM_MODEL, additionalShiurimType?._id],
+    queryKey: ["meetings", ADDITIONAL_SHIURIM_MODEL, additionalShiurimType?._id, period],
     queryFn: async () => {
       if (!additionalShiurimType) return [];
       return listMeetings<Record<string, unknown>>(ADDITIONAL_SHIURIM_MODEL, {
         status: 1,
         idType: additionalShiurimType._id,
+        period,
       });
     },
-    enabled: !!additionalShiurimType,
+    enabled: !!additionalShiurimType && !!period,
   });
 
   const dafYomiList = (dafYomiQuery.data ?? []) as Record<string, unknown>[];
@@ -90,13 +93,13 @@ export function ShiurimTab({ structure }: ShiurimTabProps) {
           if (existing?._id) {
             await updateMeeting(DAF_YOMI_MODEL, existing._id as string, {
               time: dafYomiEffectiveTime,
-              period: PERIOD,
+              period,
             });
           } else if (dafYomiEffectiveTime) {
             await createMeeting(DAF_YOMI_MODEL, {
               idType: dafYomiType._id,
               time: dafYomiEffectiveTime,
-              period: PERIOD,
+              period,
             });
           }
         } catch (err) {
@@ -124,7 +127,7 @@ export function ShiurimTab({ structure }: ShiurimTabProps) {
                 name: row.name,
                 time: row.time,
                 description: row.description ?? "",
-                period: PERIOD,
+                period,
               });
             } catch (err) {
               errors.push(`Add shiur: ${err instanceof Error ? err.message : "Failed"}`);
